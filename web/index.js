@@ -1,127 +1,3 @@
-<!doctype html>
-<meta charset="utf-8">
-<title>substrate</title>
-<style>
-  :root{
-    --bg:#0d1117; --panel:#131a23; --line:#222c38; --ink:#c9d3e0; --dim:#6b7a8d;
-    --hp:#4ade80; --speed:#fbbf24; --sense:#a78bfa; --rules:#f472b6; --give:#60a5fa;
-    --bad:#ef4444; --pos:#60a5fa; --neg:#ef4444; --focus:#67e8f9;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-       display:grid;grid-template-columns:minmax(0,1fr) 470px;height:100vh}
-  #left{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
-  #bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
-       padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
-  button{background:#1c2733;color:var(--ink);border:1px solid var(--line);border-radius:4px;
-         padding:4px 9px;font:inherit;cursor:pointer}
-  button:hover{background:#26333f;border-color:#38495c}
-  button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
-  input{width:52px;background:#0b1017;color:var(--ink);border:1px solid var(--line);
-        border-radius:4px;padding:3px 5px;font:inherit}
-  label{color:var(--dim);display:flex;gap:4px;align-items:center;cursor:pointer}
-  #stat{margin-left:auto;color:var(--dim)}
-  #stat b{color:var(--ink);font-weight:600}
-  #wrap{flex:1;overflow:auto;display:grid;place-items:center;padding:10px}
-  canvas{cursor:crosshair}
-  #side{display:flex;flex-direction:column;min-height:0;background:var(--panel)}
-  .sec{border-bottom:1px solid var(--line);padding:9px 11px}
-  .sec h2{margin:0 0 7px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-          color:var(--dim);font-weight:600}
-  #log{flex:1;overflow:auto;padding:6px 0}
-  .row{padding:1px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-  .row:hover{background:#1a222c}
-  .t{color:#455060}
-  .id{color:#8fa3bb}
-  .gather{color:var(--hp)} .harm{color:var(--bad)} .give{color:var(--give)}
-  .move{color:#5c6b7d} .wasted{color:#c9a24a} .idle{color:#4a5563} .blocked{color:#c08a68}
-  .hold{color:#4a5563}
-  .hazard{color:#e08d5a} .death{color:#ff6b6b;font-weight:600}
-  .slot_lost{color:var(--rules)}
-  table{border-collapse:collapse;width:100%}
-  td{padding:1px 0}
-  td.k{color:var(--dim);width:88px}
-  .bar{display:inline-block;height:7px;border-radius:2px;vertical-align:middle;margin-right:5px}
-  .rule{padding:3px 6px;margin-bottom:3px;border-left:2px solid var(--line);
-        background:#101821;border-radius:0 3px 3px 0}
-  .rule.dead{opacity:.4}
-  .rule.fired{background:#16202b;box-shadow:inset 0 0 0 1px #2c3d50}
-  .rule.fired .ord{color:var(--focus)}
-  .cond,.act{color:#7f8ea3}
-  .empty{color:var(--dim);font-style:italic}
-  #rules .rule{padding:4px 6px}
-  #rules .hd{display:flex;gap:4px;align-items:baseline;flex-wrap:nowrap;line-height:1.9}
-  #rules select,#rules input{background:#0b1017;color:var(--ink);border:1px solid var(--line);
-        border-radius:3px;font:inherit;padding:1px 2px;width:auto;cursor:pointer;flex:none}
-  #rules input{width:46px;cursor:text}
-  #rules select.kind{color:#8fa3bb}
-  #rules select:hover,#rules input:hover{border-color:#38495c}
-  #rules .node{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap}
-  #rules .hd>.node{flex:1 1 auto;min-width:0}
-  #rules .ord{color:#455060;width:12px;flex:none}
-  #rules .tools{margin-left:auto;display:flex;gap:2px;flex:none}
-  button.mini{padding:0 5px;line-height:17px;color:var(--dim)}
-  button.mini:hover{color:var(--ink)}
-  #rules .says{color:var(--dim);padding-left:16px;flex:1;min-width:0;
-        white-space:normal;overflow-wrap:break-word;line-height:1.5}
-  #sel{max-height:64vh;overflow:auto}
-  #addrule{margin-top:4px}
-  #err{color:var(--bad);margin-left:6px}
-  .authored{color:var(--give);font-weight:600}
-  .legend{display:flex;gap:9px;flex-wrap:wrap;color:var(--dim)}
-  .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px}
-  /* one code everywhere -- map, rule text, log: hue says which stat, +/- says which way */
-  .s-hp{color:var(--hp)} .s-speed{color:var(--speed)} .s-sense{color:var(--sense)}
-  .s-rules{color:var(--rules)} .s-position{color:#8fa3bb}
-  .plus{color:var(--pos)} .minus{color:var(--neg)}
-  .kw{color:#7f8ea3} .op{color:#9aa8bb} .num{color:var(--ink)} .mv{color:#8fa3bb}
-  #key{display:flex;flex-direction:column;gap:2px;padding:7px 10px;line-height:1.6;
-       border-top:1px solid var(--line);background:var(--panel);color:var(--dim)}
-  #key .r{display:flex;gap:11px;flex-wrap:wrap;align-items:baseline}
-  #key .r>span{white-space:nowrap}
-  #key b{color:#5c6b7d;font-weight:600;width:72px;flex:none;white-space:nowrap;
-         font-size:10px;letter-spacing:.11em;text-transform:uppercase}
-</style>
-
-<div id="left">
-  <div id="bar">
-    <button id="b1">tick</button>
-    <button id="b10">×10</button>
-    <button id="b100">×100</button>
-    <button id="bplay">play</button>
-    <span style="width:8px"></span>
-    seed <input id="seed" value="7"><button id="breset">reset</button>
-    <label><input type="checkbox" id="trails" style="width:auto"> all trails</label>
-    <label><input type="checkbox" id="acts" checked style="width:auto"> acts</label>
-    <span id="stat"></span>
-  </div>
-  <div id="wrap"><canvas id="cv"></canvas></div>
-  <div id="key"></div>
-</div>
-
-<div id="side">
-  <div class="sec">
-    <h2>selected</h2>
-    <div id="sel"><span class="empty">click an entity or a cell</span></div>
-  </div>
-  <div class="sec" style="padding-bottom:7px">
-    <h2>event log <span id="filter" style="color:var(--hp)"></span></h2>
-    <div class="legend">
-      <span class="gather">&#8595; gather</span>
-      <span class="harm">&#10005; harm</span>
-      <span class="give">&#10010; give</span>
-      <span class="move">&#8594; move</span>
-      <span class="wasted">? wasted</span>
-      <span class="blocked">&#8856; blocked</span>
-      <span class="idle">&middot; idle</span>
-      <span class="death">&dagger; death</span>
-    </div>
-  </div>
-  <div id="log"></div>
-</div>
-
-<script>
 const SIZE = 17, SQ3 = Math.sqrt(3);
 const STATC = {hp:'--hp', speed:'--speed', sense:'--sense', rules:'--rules'};
 // decision 24: one code across map, rule text and log. Hue names the stat, the +/- glyph
@@ -138,6 +14,7 @@ const MARK = {wasted:['?', '#c9a24a'], blocked:['\u2298', '#c08a68'],
               slot_lost:['\u2261', '#f472b6']};
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 let S = null, sel = null, selCell = null, playing = null, showTrails = false, showActs = true;
+let zoom = 1, panX = 0, panY = 0, drag = null, dragged = false;
 let focus = null;   // the event a log row points at: actor, counterparty, target cell
 
 const cssvar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -173,7 +50,7 @@ function hexPath(x, y, s) {
 
 function pixelToHex(mx, my) {
   const [cx, cy] = centre();
-  const x = mx - cx, y = my - cy;
+  const x = (mx - cx - panX) / zoom, y = (my - cy - panY) / zoom;
   const r = (2 / 3 * y) / SIZE, q = (SQ3 / 3 * x - y / 3) / SIZE;
   let rx = Math.round(q), rz = Math.round(r), ry = Math.round(-q - r);
   const dx = Math.abs(rx - q), dz = Math.abs(rz - r), dy = Math.abs(ry - (-q - r));
@@ -281,7 +158,10 @@ function drawAct(cx, cy, e, v) {
 function draw() {
   if (!S) return;
   const [cx, cy] = centre();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
+  // camera: scale world coords (which are centre + hex offset) around the centre, then pan
+  ctx.setTransform(zoom, 0, 0, zoom, cx * (1 - zoom) + panX, cy * (1 - zoom) + panY);
 
   // empty field
   const R = S.radius;
@@ -332,11 +212,13 @@ function draw() {
     }
   }
 
-  // this tick's actions, under the bodies that made them
+  // this tick's actions, under the bodies that made them -- several per entity now
+  // that speed is an action budget (decision 30)
   const acts = {};
-  for (const v of S.events) if (v.t === S.tick) acts[v.e] = v;
+  for (const v of S.events) if (v.t === S.tick) (acts[v.e] || (acts[v.e] = [])).push(v);
   if (showActs)
-    for (const e of S.ents) if (e.alive && acts[e.id]) drawAct(cx, cy, e, acts[e.id]);
+    for (const e of S.ents) if (e.alive && acts[e.id])
+      for (const v of acts[e.id]) drawAct(cx, cy, e, v);
 
   // entities
   for (const e of S.ents) {
@@ -356,7 +238,8 @@ function draw() {
       ctx.strokeStyle = `rgba(239,68,68,${0.25 + 0.6 * (1 - e.condition)})`;
       ctx.lineWidth = 1 + 2 * (1 - e.condition); ctx.stroke();
     }
-    const m = showActs && acts[e.id] && MARK[acts[e.id].kind];
+    const evs = acts[e.id];
+    const m = showActs && evs && evs.length && MARK[evs[evs.length - 1].kind];
     if (m) mark(X + rad + 5, Y - rad - 2, m[0], m[1], 10);
     ctx.font = `9px ${MONO}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -393,171 +276,106 @@ function draw() {
   }
 }
 
-// ---- rule editor (decision 21). Every control is enumerated by the grammar the server
-// ships in S.grammar, so no reachable state of this editor is an illegal rule.
-let G = null;
-const FDEF = {stat: () => 'hp', op: () => '<', sign: () => 1, num: () => 3,
-              sel:  () => ['source', 'hp', 1]};
-const defaultFor = (spec, kind) => [kind, ...G[spec][kind].map(t => FDEF[t]())];
-
-const opt = (list, v, lab) => list.map(x =>
-  `<option value="${x}"${String(x) === String(v) ? ' selected' : ''}>${lab ? lab(x) : x}</option>`
-).join('');
-
-const SIGNLAB = {dir: x => x > 0 ? 'toward' : 'away', pol: x => x > 0 ? '+' : '−'};
-
-function fieldHTML(t, v, signAs) {
-  if (t === 'sel')  return nodeHTML('sel', v);
-  if (t === 'stat') return `<select class="f" data-t="stat" style="color:${COL[v] || ''}">`
-                         + `${opt(G.stats, v, x => STATSYM[x] + ' ' + x)}</select>`;
-  if (t === 'op')   return `<select class="f" data-t="op">${opt(G.ops, v)}</select>`;
-  if (t === 'num')  return `<input class="f" data-t="num" value="${v}">`;
-  if (t === 'sign') return `<select class="f" data-t="sign" `
-                         + `style="color:${v > 0 ? COL.give : COL.bad}">`
-                         + `${opt([1, -1], v, SIGNLAB[signAs])}</select>`;
-  return '';
-}
-
-function paintField(el) {
-  if (el.dataset.t === 'stat') el.style.color = COL[el.value] || '';
-  if (el.dataset.t === 'sign') el.style.color = +el.value > 0 ? COL.give : COL.bad;
-}
-
-// ---- the rule said back to you in the map's own symbols. Built from r.raw, not from the
-// server's text, so the description and the map cannot drift apart.
+// ---- conditions/actions read back in the map's own symbols. Built from the chart nodes
+// themselves, so the description cannot drift from what the sim runs. Symbol-only: hue
+// names the stat, a sign glyph names the direction.
+const stSym  = s => `<span class="s-${s}">${STATSYM[s] || ''}</span>`;
 const stTok  = s => `<span class="s-${s}">${STATSYM[s] || ''} ${s}</span>`;
 const sgTok  = n => n > 0 ? '<span class="plus">+</span>' : '<span class="minus">\u2212</span>';
-const numTok = v => `<span class="num">${v}</span>`;
-const opTok  = o => `<span class="op">${o === '<' ? '&lt;' : '&gt;'}</span>`;
+const numTok = v => typeof v === 'string'
+  ? `<span class="num expr">${v}</span>`
+  : `<span class="num">${v}</span>`;
+const opTok  = o => `<span class="op">${({'<':'&lt;','>':'&gt;','<=':'&le;','>=':'&ge;'})[o] || o}</span>`;
 const kw     = t => `<span class="kw">${t}</span>`;
 
-function selTok(sl) {
-  if (sl[0] === 'it')     return kw('\u21a9 it');
-  if (sl[0] === 'entity') return kw('\u25cf nearest entity');
-  return `${kw('\u2b21 nearest')} ${sgTok(sl[2])}${stTok(sl[1])} ${kw('source')}`;
+// a selector in symbols: ↩ it, ● nearest entity, ⬡ + sign + stat = nearest source
+function selSym(sl) {
+  if (sl[0] === 'it')     return kw('\u21a9');
+  if (sl[0] === 'entity') return kw('\u25cf');
+  return `${kw('\u2b21')}${sgTok(sl[2])}${stSym(sl[1])}`;
 }
 
-function condTok(c) {
+function condSym(c) {
   switch (c[0]) {
-    case 'always':       return kw('always');
-    case 'self':         return `${kw('self')} ${stTok(c[1])} ${opTok(c[2])} ${numTok(c[3])}`;
-    case 'other':        return `${kw('\u25cf nearest read')} ${stTok(c[1])} ${opTok(c[2])} ${numTok(c[3])}`;
-    case 'dist_entity':  return `${kw('\u2921 dist to \u25cf nearest')} ${opTok(c[1])} ${numTok(c[2])}`;
-    case 'dist_source':  return `${kw('\u2921 dist to')} ${selTok(['source', c[1], c[2]])} ${opTok(c[3])} ${numTok(c[4])}`;
-    case 'count_entity': return `${kw('# entities seen')} ${opTok(c[1])} ${numTok(c[2])}`;
-    case 'amount':       return `${kw('\u25a4 amount in')} ${selTok(['source', c[1], c[2]])} ${opTok(c[3])} ${numTok(c[4])}`;
+    case 'always':       return kw('\u22c6');
+    case 'self':         return `${stSym(c[1])} ${opTok(c[2])} ${numTok(c[3])}`;
+    case 'other':        return `${kw('\u25cf')}${stSym(c[1])} ${opTok(c[2])} ${numTok(c[3])}`;
+    case 'dist_entity':  return `${kw('\u2921\u25cf')} ${opTok(c[1])} ${numTok(c[2])}`;
+    case 'dist_source':  return `${kw('\u2921')}${selSym(['source', c[1], c[2]])} ${opTok(c[3])} ${numTok(c[4])}`;
+    case 'count_entity': return `${kw('#\u25cf')} ${opTok(c[1])} ${numTok(c[2])}`;
+    case 'amount':       return `${kw('\u25a4')}${selSym(['source', c[1], c[2]])} ${opTok(c[3])} ${numTok(c[4])}`;
   }
   return kw(String(c));
 }
 
+const condsSym = cs => cs.map(condSym).join(` ${kw('\u2227')} `);
+
 // the verb is read off (selector kind, sign) -- the same pair the sim resolves, named after
 // the fact (decision 3)
-function actTok(a) {
+function actSym(a) {
   if (a[0] === 'move')
-    return `<span class="mv">${a[2] > 0 ? '\u2192 move toward' : '\u2190 move away from'}</span> ${selTok(a[1])}`;
-  const sl = a[1], stat = a[2], sign = a[3];
-  if (sl[0] === 'source') return sign > 0
-    ? `<span class="plus">\u2193 gather</span> ${stTok(stat)} ${kw('from')} ${selTok(sl)}`
-    : `<span class="minus">\u2191 spend</span> ${stTok(stat)} ${kw('on')} ${selTok(sl)}`;
+    return `<span class="mv">${a[2] > 0 ? '\u2192' : '\u2190'}</span>${selSym(a[1])}`;
+  const sl = a[1];
+  if (sl[0] === 'source') {                        // the source carries its own (stat, sign)
+    return sl[2] > 0
+      ? `<span class="plus">\u2193</span>${selSym(sl)}`
+      : `<span class="minus">\u2191</span>${selSym(sl)}`;
+  }
+  const stat = a[2], sign = a[3];
   if (sl[0] === 'entity') return sign > 0
-    ? `<span class="plus">\u271a give</span> ${stTok(stat)} ${kw('to')} ${selTok(sl)}`
-    : `<span class="minus">\u2715 strike</span> ${stTok(stat)} ${kw('at')} ${selTok(sl)}`;
-  return `${sgTok(sign)}${kw('act')} ${stTok(stat)} ${kw('on')} ${selTok(sl)}`;
+    ? `<span class="plus">\u271a</span>${stSym(stat)}${selSym(sl)}`
+    : `<span class="minus">\u2715</span>${stSym(stat)}${selSym(sl)}`;
+  return `${sgTok(sign)}${stSym(stat)}${selSym(sl)}`;
 }
 
-const ruleHue = a => a[0] === 'move' ? COL.position : (COL[a[2]] || COL.hp);
-
-function nodeHTML(spec, v) {
-  const kind = v[0], fields = G[spec][kind] || [];
-  // a sign reads as a direction only on a move; everywhere else it is a polarity
-  const signAs = (spec === 'act' && kind === 'move') ? 'dir' : 'pol';
-  return `<span class="node f" data-spec="${spec}">`
-       + `<select class="kind">${opt(Object.keys(G[spec]), kind)}</select>`
-       + fields.map((t, i) => fieldHTML(t, v[i + 1], signAs)).join('')
-       + `</span>`;
+// ---- flow-chart viewer (decision 26). The inspector shows the selected entity's chart
+// read-only; authoring happens in /flowchart. A chart can chain actions, so one tick runs
+// several -- the budget is the entity's speed, one action per point.
+const CHGLYPH = { start: '\u25b8', decision: '\u25c6', action: '\u25a1', end: '\u25a0' };
+function chartHTML(chart) {
+  if (!chart || !chart.nodes) return '<span class="empty">no chart</span>';
+  return Object.keys(chart.nodes).map(id => {
+    const n = chart.nodes[id];
+    let body;
+    if (n.type === 'start') body = `${kw('start')} \u2192 ${n.next || '\u2014'}`;
+    else if (n.type === 'end') body = kw('end');
+    else if (n.type === 'decision') body = `if ${condsSym(n.conds)}`
+      + `<br>&nbsp; <span class="kw">yes</span> ${n.yes || '\u2014'}`
+      + ` &middot; <span class="kw">no</span> ${n.no || '\u2014'}`;
+    else if (n.type === 'action') body = `${actSym(n.act)} \u2192 ${n.next || '\u2014'}`;
+    else body = kw(String(n.type));
+    return `<div class="hd"><span class="ord">${CHGLYPH[n.type] || '?'}</span>`
+      + `<span class="says">${body}</span></div>`;
+  }).join('');
 }
-
-function ruleHTML(r, i, fired) {
-  const [c, a] = r.raw;
-  return `<div class="rule ${r.active ? '' : 'dead'} ${fired ? 'fired' : ''}" data-i="${i}"
-       style="border-left-color:${ruleHue(a)}">
-    <div class="hd"><span class="ord">${fired ? '\u25b6' : i + 1}</span><span class="cond">if</span>
-      ${nodeHTML('cond', c)}</div>
-    <div class="hd"><span class="ord"></span><span class="act">→</span>
-      ${nodeHTML('act', a)}</div>
-    <div class="hd"><span class="says" title="if ${r.cond}">if ${condTok(c)}</span>
-      <span class="tools">
-        <button class="mini" data-act="up"   title="raise priority">↑</button>
-        <button class="mini" data-act="down" title="lower priority">↓</button>
-        <button class="mini" data-act="dup"  title="duplicate">⧉</button>
-        <button class="mini" data-act="del"  title="delete">×</button>
-      </span></div>
-    <div class="hd"><span class="says" title="${r.act}">→ ${actTok(a)}</span></div></div>`;
+let BEHAVIOURS = {};
+async function loadBehaviours() {
+  try { BEHAVIOURS = (await (await fetch('/api/behaviours')).json()).behaviours || {}; }
+  catch (e) { BEHAVIOURS = {}; }
 }
-
-function readNode(box) {
-  const out = [box.querySelector(':scope > select.kind').value];
-  for (const el of box.querySelectorAll(':scope > .f')) {
-    if (el.classList.contains('node')) out.push(readNode(el));
-    else if (el.dataset.t === 'num' || el.dataset.t === 'sign')
-      out.push(Number.isFinite(+el.value) ? +el.value : 0);
-    else out.push(el.value);
-  }
-  return out;
-}
-
-const collectRules = () => [...document.querySelectorAll('#rules .rule')].map(row =>
-  ['cond', 'act'].map(p => readNode(row.querySelector(`.node[data-spec="${p}"]`))));
-
-// the read-back line is the thing you actually read, so it has to follow the dropdowns
-// immediately -- render() will not rebuild the editor while the cursor is inside it
-function paintSays(rules) {
-  document.querySelectorAll('#rules .rule').forEach((row, i) => {
-    const r = rules[i];
-    if (!r) return;
-    row.style.borderLeftColor = ruleHue(r[1]);
-    const says = row.querySelectorAll('.says');
-    if (says[0]) says[0].innerHTML = `if ${condTok(r[0])}`;
-    if (says[1]) says[1].innerHTML = `→ ${actTok(r[1])}`;
-  });
-}
-
-async function postRules(rules) {
-  const id = sel;
-  const r = await fetch('/api/rules', {method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({id, rules})});
+const behOptions = () => {
+  const names = Object.keys(BEHAVIOURS);
+  return names.length ? names.map(n => `<option value="${n}">${n}</option>`).join('')
+    : '<option value="">(no saved behaviours)</option>';
+};
+async function assignChart(graph) {
+  if (sel === null) return;
+  const r = await fetch('/api/rules', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: sel, chart: graph }) });
   const j = await r.json();
-  if (!r.ok) {                       // rejected: leave the editor as typed and say why
-    const box = document.getElementById('err');
-    if (box) box.textContent = ' ' + (j.error || 'rejected');
-    return;
-  }
-  S = j; render(); paintSays(rules);
+  const box = document.getElementById('err');
+  if (!r.ok) { if (box) box.textContent = ' ' + (j.error || 'rejected'); return; }
+  S = j; render();
 }
 
 const selBox = document.getElementById('sel');
-selBox.addEventListener('change', ev => {
-  if (!ev.target.closest('#rules')) return;
-  if (ev.target.classList.contains('kind')) {     // new kind, new field list
-    const node = ev.target.closest('.node');
-    node.outerHTML = nodeHTML(node.dataset.spec, defaultFor(node.dataset.spec, ev.target.value));
-  } else paintField(ev.target);
-  postRules(collectRules());
-});
 selBox.addEventListener('click', ev => {
-  if (ev.target.id === 'addrule')
-    return postRules([...collectRules(), [['always'], ['move', ['source', 'hp', 1], 1]]]);
-  const b = ev.target.closest('#rules button[data-act]');
-  if (!b) return;
-  const rules = collectRules(), i = +b.closest('.rule').dataset.i;
-  switch (b.dataset.act) {
-    case 'del':  if (rules.length < 2) return; rules.splice(i, 1); break;
-    case 'dup':  rules.splice(i + 1, 0, JSON.parse(JSON.stringify(rules[i]))); break;
-    case 'up':   if (i === 0) return; rules.splice(i - 1, 0, rules.splice(i, 1)[0]); break;
-    case 'down': if (i === rules.length - 1) return; rules.splice(i + 1, 0, rules.splice(i, 1)[0]); break;
+  if (ev.target.id === 'beh-assign') {
+    const name = document.getElementById('beh').value;
+    const graph = name && BEHAVIOURS[name];
+    if (graph) assignChart(graph);
   }
-  postRules(rules);
 });
 
 function bar(v, max, col) {
@@ -585,11 +403,9 @@ function renderSel() {
   }
   const e = S.ents.find(e => e.id === sel);
   if (!e) { box.innerHTML = '<span class="empty">gone</span>'; return; }
-  const last = [...S.events].reverse().find(v => v.e === e.id && v.t === S.tick);
-  const fired = last && last.rule !== undefined ? last.rule : -1;
   box.innerHTML = `
     <div style="margin-bottom:6px">
-      <b>e${e.id}</b> · ${e.archetype} · ${e.q},${e.r}
+      <b>e${e.id}</b> · <span title="spawned as">${e.arch}</span> · ${e.archetype} · ${e.q},${e.r}
       ${focus && focus.other !== null ? `<span style="color:var(--speed)">↔ e${focus.other}</span>` : ''}
       ${e.alive ? '' : `<span class="death">DEAD t${e.died}</span>`}
     </div>
@@ -602,10 +418,11 @@ function renderSel() {
     <table>${Object.entries(e.stat).map(([k, v]) =>
       `<tr><td class="k" style="color:${COL[k]}">${STATSYM[k]} ${k}</td>
            <td>${bar(v, k==='hp'?20:k==='sense'?6:5, STATC[k])}${v}</td></tr>`).join('')}</table>
-    <h2 style="margin:9px 0 5px">rules · ${e.rules.filter(r=>r.active).length}/${e.rules.length} slots
-      <span style="text-transform:none;letter-spacing:0;font-weight:400">· edits land next tick</span></h2>
-    <div id="rules">${e.rules.map((r, i) => ruleHTML(r, i, i === fired)).join('')}
-      <button id="addrule" class="mini">+ rule</button><span id="err"></span></div>
+    <h2 style="margin:9px 0 5px">behaviour
+      <span style="text-transform:none;letter-spacing:0;font-weight:400">· one action per speed point</span></h2>
+    <div class="chart">${chartHTML(e.chart)}</div>
+    <div style="margin:6px 0"><select id="beh">${behOptions()}</select>
+      <button id="beh-assign" class="mini">assign</button><span id="err"></span></div>
     <h2 style="margin:9px 0 5px">skill</h2>
     ${e.skill.length ? `<table>${e.skill.map(([k, v]) => {
         const [st, sg] = k.split(' '), n = sg === '+' ? 1 : -1;
@@ -629,6 +446,8 @@ const logStat = s => `<span class="s-${s}">${STATSYM[s] || ''}${s}</span>`;
 
 function line(v, i) {
   const t = `<span class="t">t${String(v.t).padStart(4)}</span> <span class="id">e${String(v.e).padStart(2,'0')}</span>`;
+  const rtag = v.rule !== undefined
+    ? ` <span class="rule-tag" title="${[v.cond, v.act].filter(Boolean).join(' · ')}">r${v.rule + 1}</span>` : '';
   let body;
   switch (v.kind) {
     case 'gather':    body = `↓ gather <span class="plus">+</span>${v.got} ${logStat(v.stat)} @${v.target} (drew ${v.drew}, d${v.dist}, ${v.left} left, strain ${v.strain})`; break;
@@ -641,12 +460,12 @@ function line(v, i) {
     case 'wasted':    body = `? wasted — ${v.why}`; break;
     case 'idle':      body = `· idle — ${v.why}`; break;
     case 'slot_lost': body = `≡ slot lost → ${v.slots} rules`; break;
-    case 'authored':  body = `✎ rules rewritten — ${v.n} rules, ${v.slots} in slots`; break;
+    case 'authored':  body = `✎ chart authored — ${v.n} nodes`; break;
     case 'death':     body = `† DIED at ${v.at}, lived ${v.lived}, ${v.archetype}, loot ${v.loot}`; break;
     default:          body = JSON.stringify(v);
   }
   const on = focus && focus.ev === v ? ' style="background:#1e2937"' : '';
-  return `<div class="row ${v.kind}" data-e="${v.e}" data-i="${i}"${on}>${t} ${body}</div>`;
+  return `<div class="row ${v.kind}" data-e="${v.e}" data-i="${i}"${on}>${t}${rtag} ${body}</div>`;
 }
 
 let shown = [];
@@ -659,7 +478,6 @@ function renderLog() {
 }
 
 function render() {
-  if (S.grammar) G = S.grammar;
   document.getElementById('stat').innerHTML =
     `tick <b>${S.tick}</b> · alive <b>${S.alive}</b>/${S.ents.length} · seed ${S.seed}`;
   fit(); draw();
@@ -688,7 +506,8 @@ function drawKey() {
       <span class="harm">✕ strike</span><span class="give">✚ give</span>
       <span class="wasted">? wasted</span><span class="blocked">⊘ blocked</span>
       <span class="idle">· idle</span>
-      <span class="kw">— the line runs actor → target cell</span></div>`;
+      <span class="kw">— the line runs actor → target cell</span></div>
+    <div class="r"><b>view</b><span class="kw">wheel = zoom · drag = pan · double-click = fit</span></div>`;
 }
 
 async function api(path) { S = await (await fetch(path)).json(); render(); }
@@ -706,6 +525,7 @@ document.getElementById('bplay').onclick = ev => {
 };
 document.getElementById('trails').onchange = e => { showTrails = e.target.checked; draw(); };
 document.getElementById('acts').onchange   = e => { showActs   = e.target.checked; draw(); };
+document.getElementById('bfit').onclick   = () => fitView();
 document.getElementById('log').onclick = e => {
   const row = e.target.closest('.row'); if (!row || !row.dataset.e) return;
   const v = shown[+row.dataset.i];
@@ -716,6 +536,7 @@ document.getElementById('log').onclick = e => {
   sel = +row.dataset.e; selCell = null; render();
 };
 cv.onclick = e => {
+  if (dragged) { dragged = false; return; }   // a pan, not a select
   const b = cv.getBoundingClientRect();
   const [q, r] = pixelToHex(e.clientX - b.left, e.clientY - b.top);
   const hit = S.ents.find(x => x.alive && x.q === q && x.r === r);
@@ -723,10 +544,37 @@ cv.onclick = e => {
   if (hit) { sel = hit.id; selCell = null; } else { sel = null; selCell = [q, r]; }
   render();
 };
+
+// ---- camera: wheel zooms about the cursor, drag pans, double-click fits
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const b = cv.getBoundingClientRect();
+  const mx = e.clientX - b.left, my = e.clientY - b.top;
+  const [cx, cy] = centre();
+  const wx = (mx - cx - panX) / zoom, wy = (my - cy - panY) / zoom;  // world pt under cursor
+  zoom = Math.max(0.2, Math.min(8, zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+  panX = mx - cx - wx * zoom; panY = my - cy - wy * zoom;           // keep it pinned
+  draw();
+}, {passive: false});
+cv.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  drag = {x: e.clientX, y: e.clientY, panX, panY};
+  dragged = false;
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!dragged && Math.hypot(dx, dy) > 3) dragged = true;
+  if (dragged) { panX = drag.panX + dx; panY = drag.panY + dy; draw(); }
+});
+window.addEventListener('mouseup', () => { drag = null; });
+const fitView = () => { zoom = 1; panX = panY = 0; draw(); };
+cv.ondblclick = fitView;
+
 document.onkeydown = e => {
   if (e.key === ' ') { e.preventDefault(); api('/api/tick?n=1'); }
   if (e.key === 'Escape') { sel = selCell = null; focus = null; render(); }
 };
 drawKey();
+loadBehaviours();
 api('/api/state');
-</script>

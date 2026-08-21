@@ -1,0 +1,100 @@
+/* Flowchart editor for authoring character behaviour.
+   Self-contained: no dependency on the map, the log, or any server endpoint. */
+
+:root {
+  --fc-bg: #0d1117; --fc-panel: #131a23; --fc-line: #222c38;
+  --fc-ink: #c9d3e0; --fc-dim: #6b7a8d; --fc-faint: #455060;
+  --hp: #4ade80; --speed: #fbbf24; --sense: #a78bfa; --rules: #f472b6;
+  --give: #60a5fa; --bad: #ef4444; --focus: #67e8f9;
+}
+
+.fc {
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fc-ink); background: var(--fc-bg);
+  border: 1px solid var(--fc-line); border-radius: 8px; padding: 10px;
+}
+.fc * { box-sizing: border-box; }
+
+.fc-toolbar {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding-bottom: 8px; border-bottom: 1px solid var(--fc-line); margin-bottom: 8px;
+}
+.fc-toolbar .fc-hint { color: var(--fc-dim); margin-left: auto; }
+
+.fc button {
+  background: #1c2733; color: var(--fc-ink); border: 1px solid var(--fc-line);
+  border-radius: 4px; padding: 3px 8px; font: inherit; cursor: pointer;
+}
+.fc button:hover { background: #26333f; border-color: #38495c; }
+.fc button.fc-danger { color: var(--bad); border-color: #5b2a2a; }
+.fc button.fc-danger:hover { background: #3a1d1d; border-color: var(--bad); }
+
+.fc-library {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding: 6px 0; border-bottom: 1px solid var(--fc-line); margin-bottom: 8px;
+}
+.fc-library input.fc-lib-name { width: 130px; }
+.fc-library select.fc-lib-select { min-width: 120px; max-width: 200px; }
+.fc-library .fc-hint { color: var(--fc-dim); margin-left: auto; }
+
+.fc-node.fc-selected { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.fc-canvas { position: relative; overflow: auto; min-height: 200px; }
+.fc-nodes { position: absolute; left: 0; top: 0; }
+.fc-edges { position: absolute; left: 0; top: 0; pointer-events: none; }
+.fc-edge  { fill: none; stroke: #4a5563; stroke-width: 1.5; }
+.fc-elabel { fill: #8fa3bb; font-size: 10px; }
+
+.fc-node {
+  position: absolute; background: var(--fc-panel); border: 1px solid #2c3a4a;
+  border-radius: 6px; min-width: 230px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+}
+.fc-node.fc-decision { border-top: 3px solid var(--focus); }
+.fc-node.fc-action   { border-top: 3px solid var(--hp); }
+.fc-node.fc-start    { border: 1px dashed #4a5563; border-radius: 999px; }
+.fc-node.fc-end      { border: 1px solid #2c3a4a; border-radius: 999px; }
+
+.fc-head {
+  display: flex; gap: 6px; align-items: center; padding: 4px 7px;
+  border-bottom: 1px solid var(--fc-line);
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--fc-dim);
+  cursor: grab;
+}
+.fc-dragging, .fc-dragging .fc-head { cursor: grabbing; }
+.fc-node.fc-start .fc-head, .fc-node.fc-end .fc-head { border-bottom: 0; }
+.fc-glyph { color: var(--fc-ink); }
+.fc-id { margin-left: auto; color: var(--fc-faint); letter-spacing: 0; text-transform: none; }
+.fc-del, .fc-mini { padding: 0 5px; line-height: 16px; color: var(--fc-dim); }
+.fc-del:hover { color: var(--bad); }
+
+.fc-body { padding: 5px 7px; }
+.fc-cond, .fc-act { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin: 2px 0; }
+.fc-and { color: var(--fc-faint); width: 24px; font-size: 10px; flex: none; }
+
+.fc-node-editor { display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+
+.fc select, .fc input {
+  background: #0b1017; color: var(--fc-ink); border: 1px solid var(--fc-line);
+  border-radius: 3px; font: inherit; padding: 1px 3px; cursor: pointer;
+}
+.fc select:hover, .fc input:hover { border-color: #38495c; }
+.fc input { width: 96px; cursor: text; }
+.fc select.fc-kind { color: #8fa3bb; }
+.fc-edge-sel { max-width: 96px; }
+
+.fc-says { color: #8fa3bb; margin-top: 5px; line-height: 1.5; }
+
+.fc-foot {
+  display: flex; gap: 10px; align-items: center; padding: 4px 7px;
+  border-top: 1px solid var(--fc-line); flex-wrap: wrap;
+}
+.fc-foot label { color: var(--fc-dim); font-size: 10px; display: inline-flex; gap: 4px; align-items: center; }
+
+/* one code everywhere: hue names the stat, + / − names the direction */
+.s-hp { color: var(--hp); } .s-speed { color: var(--speed); }
+.s-sense { color: var(--sense); } .s-rules { color: var(--rules); }
+.s-position { color: #8fa3bb; }
+.plus { color: var(--give); } .minus { color: var(--bad); }
+.kw { color: #7f8ea3; } .op { color: #9aa8bb; } .num { color: var(--fc-ink); }
+.num.expr { color: var(--focus); font-style: italic; }

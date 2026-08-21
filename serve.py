@@ -1,4 +1,4 @@
-"""Browser front end for sim.py. Stdlib only -- decision 18.
+"""Browser front end for the sim package. Stdlib only -- decision 18.
 
     python3 serve.py [port] [seed]     then open http://localhost:8000
 """
@@ -33,17 +33,15 @@ def snapshot(log_tail=600):
              for p, c in w["cells"].items() if c.amount > 0.05]
     ents = []
     for e in w["ents"]:
-        n = max(1, int(round(e.stat["rules"])))
         ents.append({
             "id": e.id, "q": e.pos[0], "r": e.pos[1], "alive": e.alive, "died": e.died,
+            "arch": e.arch,
             "stat": {k: round(v, 2) for k, v in e.stat.items()},
             "strain": round(e.strain, 2), "condition": round(e.condition, 3),
             "read": sim.read_radius(e),      # decision 23: half sense, where stats become legible
             "skill": sorted(([f"{k[0]} {'+' if k[1] > 0 else '-'}", round(v, 2)]
                              for k, v in e.skill.items()), key=lambda x: -x[1]),
-            "rules": [{"cond": sim.fmt_cond(c), "act": sim.fmt_act(a), "active": i < n,
-                        "raw": [c, a]}
-                      for i, (c, a) in enumerate(e.ruleset)],
+            "chart": e.chart,
             "trail": [[p[0], p[1]] for p in e.trail],
             "acts": dict(e.acts), "archetype": sim.archetype(e),
         })
@@ -56,6 +54,43 @@ def snapshot(log_tail=600):
                         "SKILL_DECAY", "REGROW", "READ_FRAC")},
             "grammar": {"cond": sim.COND_SPEC, "act": sim.ACT_SPEC, "sel": sim.SEL_SPEC,
                         "stats": sim.STATS, "ops": list(sim.OPS)}}
+
+# ---------------------------------------------------------------- behaviour library
+# Authored flowcharts are stored on disk as one JSON file per named behaviour, in a
+# `behaviours/` folder next to this file -- plain files, so they can be edited, diffed and
+# versioned like any other asset.
+def _behaviours_dir():
+    d = os.path.join(HERE, "behaviours")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def _safe_name(name):
+    safe = "".join(c for c in name if c.isalnum() or c in "-_.")
+    if not safe:
+        raise ValueError("behaviour name has no usable characters")
+    return safe
+
+def list_behaviours():
+    out = {}
+    for fn in sorted(os.listdir(_behaviours_dir())):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(_behaviours_dir(), fn), encoding="utf-8") as f:
+                out[fn[:-5]] = json.load(f)
+        except (OSError, ValueError):
+            continue
+    return out
+
+def save_behaviour(name, graph):
+    safe = _safe_name(name)
+    with open(os.path.join(_behaviours_dir(), safe + ".json"), "w", encoding="utf-8") as f:
+        json.dump(graph, f, indent=2)
+
+def delete_behaviour(name):
+    p = os.path.join(_behaviours_dir(), _safe_name(name) + ".json")
+    if os.path.exists(p):
+        os.remove(p)
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, body, ctype="application/json"):
@@ -77,6 +112,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
+        if u.path == "/api/behaviours":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(n) or b"{}")
+            except ValueError as ex:
+                return self._err(f"body is not JSON: {ex}")
+            name = body.get("name")
+            graph = body.get("graph")
+            if not isinstance(name, str) or not name.strip():
+                return self._err("behaviour needs a name")
+            if not isinstance(graph, dict):
+                return self._err("behaviour needs a graph object")
+            try:
+                save_behaviour(name, graph)
+            except ValueError as ex:
+                return self._err(str(ex))
+            return self._send(json.dumps({"behaviours": list_behaviours()}))
         if u.path != "/api/rules":
             return self.send_error(404)
         try:
@@ -88,20 +140,51 @@ class Handler(BaseHTTPRequestHandler):
         if e is None:
             return self._err(f"no entity {body.get('id')!r}")
         try:
-            ruleset = sim.parse_ruleset(body.get("rules"))
+            chart = sim.parse_chart(body.get("chart"))
         except (ValueError, TypeError) as ex:
             return self._err(str(ex))
-        e.ruleset = ruleset                    # decision 21: takes effect next tick
+        e.chart = chart                        # takes effect next tick
         STATE["log"].append({"t": STATE["world"]["tick"], "e": e.id, "kind": "authored",
-                             "slots": len(e.active_rules()), "n": len(ruleset)})
+                             "n": len(chart["nodes"])})
         return self._send(json.dumps(snapshot()))
+
+    def do_DELETE(self):
+        u = urlparse(self.path)
+        if u.path != "/api/behaviours":
+            return self.send_error(404)
+        q = parse_qs(u.query)
+        name = q.get("name", [""])[0]
+        if not name:
+            return self._err("name required")
+        try:
+            delete_behaviour(name)
+        except ValueError as ex:
+            return self._err(str(ex))
+        return self._send(json.dumps({"behaviours": list_behaviours()}))
 
     def do_GET(self):
         u = urlparse(self.path)
         q = parse_qs(u.query)
         if u.path in ("/", "/index.html"):
-            with open(os.path.join(HERE, "index.html"), "rb") as f:
+            with open(os.path.join(HERE, "web", "index.html"), "rb") as f:
                 return self._send(f.read(), "text/html; charset=utf-8")
+        if u.path == "/index.css":
+            with open(os.path.join(HERE, "web", "index.css"), "rb") as f:
+                return self._send(f.read(), "text/css; charset=utf-8")
+        if u.path == "/index.js":
+            with open(os.path.join(HERE, "web", "index.js"), "rb") as f:
+                return self._send(f.read(), "application/javascript; charset=utf-8")
+        if u.path == "/flowchart":
+            with open(os.path.join(HERE, "web", "flowchart.html"), "rb") as f:
+                return self._send(f.read(), "text/html; charset=utf-8")
+        if u.path == "/flowchart.js":
+            with open(os.path.join(HERE, "web", "flowchart.js"), "rb") as f:
+                return self._send(f.read(), "application/javascript; charset=utf-8")
+        if u.path == "/flowchart.css":
+            with open(os.path.join(HERE, "web", "flowchart.css"), "rb") as f:
+                return self._send(f.read(), "text/css; charset=utf-8")
+        if u.path == "/api/behaviours":
+            return self._send(json.dumps({"behaviours": list_behaviours()}))
         if u.path == "/api/state":
             return self._send(json.dumps(snapshot()))
         if u.path == "/api/tick":

@@ -1,0 +1,44 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>substrate</title>
+<link rel="stylesheet" href="index.css">
+
+<div id="left">
+  <div id="bar">
+    <button id="b1">tick</button>
+    <button id="b10">×10</button>
+    <button id="b100">×100</button>
+    <button id="bplay">play</button>
+    <span style="width:8px"></span>
+    seed <input id="seed" value="7"><button id="breset">reset</button>
+    <label><input type="checkbox" id="trails" style="width:auto"> all trails</label>
+    <label><input type="checkbox" id="acts" checked style="width:auto"> acts</label>
+    <button id="bfit" title="reset zoom & pan">fit</button>
+    <span id="stat"></span>
+  </div>
+  <div id="wrap"><canvas id="cv"></canvas></div>
+  <div id="key"></div>
+</div>
+
+<div id="side">
+  <div class="sec">
+    <h2>selected</h2>
+    <div id="sel"><span class="empty">click an entity or a cell</span></div>
+  </div>
+  <div class="sec" style="padding-bottom:7px">
+    <h2>event log <span id="filter" style="color:var(--hp)"></span></h2>
+    <div class="legend">
+      <span class="gather">&#8595; gather</span>
+      <span class="harm">&#10005; harm</span>
+      <span class="give">&#10010; give</span>
+      <span class="move">&#8594; move</span>
+      <span class="wasted">? wasted</span>
+      <span class="blocked">&#8856; blocked</span>
+      <span class="idle">&middot; idle</span>
+      <span class="death">&dagger; death</span>
+    </div>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script src="index.js"></script>
