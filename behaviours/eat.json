@@ -1,0 +1,32 @@
+{
+  "entry": "n2",
+  "nodes": {
+    "n2": {
+      "type": "decision",
+      "conds": [
+        "dist +hp source <= 1",
+        "my hp < my.max_hp"
+      ],
+      "yes": "n3",
+      "no": "n4"
+    },
+    "n3": {
+      "type": "action",
+      "act": "act on +hp source",
+      "next": ""
+    },
+    "n4": {
+      "type": "decision",
+      "conds": [
+        "amount +hp source > 0"
+      ],
+      "yes": "n5",
+      "no": ""
+    },
+    "n5": {
+      "type": "action",
+      "act": "move toward +hp source",
+      "next": ""
+    }
+  }
+}

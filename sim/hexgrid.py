@@ -10,6 +10,13 @@ def hdist(a, b):
 def hadd(a, b):
     return (a[0]+b[0], a[1]+b[1])
 
+def in_bounds(p):
+    return abs(p[0]) <= MAP_RADIUS and abs(p[1]) <= MAP_RADIUS and abs(p[0]+p[1]) <= MAP_RADIUS
+
+def neighbours(pos):
+    """The hexes one step from here that are on the map -- what a step may reach."""
+    return [c for c in (hadd(pos, d) for d in DIRS) if in_bounds(c)]
+
 def disc(radius, centre=(0,0)):
     out = []
     for q in range(-radius, radius+1):
@@ -22,10 +29,7 @@ def step_towards(pos, target, sign):
     neighbour improves on where you are -- standing on your target is arrival, not a reason
     to step off it."""
     best, bestd = pos, hdist(pos, target) * sign
-    for d in DIRS:
-        c = hadd(pos, d)
-        if abs(c[0]) > MAP_RADIUS or abs(c[1]) > MAP_RADIUS or abs(c[0]+c[1]) > MAP_RADIUS:
-            continue
+    for c in neighbours(pos):
         dd = hdist(c, target) * sign
         if dd < bestd:
             best, bestd = c, dd

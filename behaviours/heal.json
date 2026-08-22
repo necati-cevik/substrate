@@ -1,0 +1,31 @@
+{
+  "entry": "n2",
+  "nodes": {
+    "n2": {
+      "type": "decision",
+      "conds": [
+        "dist entity <= 1"
+      ],
+      "yes": "n3",
+      "no": "n4"
+    },
+    "n3": {
+      "type": "action",
+      "act": "act +hp on entity",
+      "next": ""
+    },
+    "n4": {
+      "type": "decision",
+      "conds": [
+        "dist entity <= u.sense"
+      ],
+      "yes": "n5",
+      "no": ""
+    },
+    "n5": {
+      "type": "action",
+      "act": "move toward entity",
+      "next": ""
+    }
+  }
+}

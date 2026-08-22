@@ -1,27 +1,31 @@
 """Rule validation: numeric-threshold expressions and ruleset parsing."""
 import ast
 
-from .config import STATS
+from .config import STATS, CAPPED
 from .grammar import OPS, COND_SPEC, SEL_SPEC
 
 # ---------------------------------------------------------------- numeric thresholds
 # A `num` threshold is either a literal number or an arithmetic expression over the entity's
-# own stats -- e.g. "u.sense/2". Expressions are compiled once and cached, then evaluated
-# against the entity each tick. `u` is the entity deciding; the stat names are the same four
-# the rest of the grammar uses. A threshold that fails to evaluate is NaN, which makes every
-# comparison false, so the condition simply does not fire (decision 9's spirit).
+# own stats -- e.g. "u.sense/2", "my.hp > my.max_hp/2". Expressions are compiled once and
+# cached, then evaluated against the entity each tick. `u` and `my` both name the entity
+# deciding; `<stat>` is what it carries now and `max_<stat>` the ceiling it cannot be
+# filled past (decision 36) -- so only the capped stats have one. A threshold that fails to evaluate is
+# NaN, which makes every comparison false, so the condition simply does not fire
+# (decision 9's spirit).
 _EXPR_CACHE = {}
+_SUBJECT = ("u", "my")                        # the same entity, two ways to say it
+MAX_STATS = tuple("max_" + s for s in CAPPED) # the ceiling, for the stats that have one
 
 def _compile_expr(text):
-    """text -> (e -> float). Accepts literals, u.<stat>, + - * /, parentheses and unary
-    minus. Raises ValueError on anything else."""
+    """text -> (e -> float). Accepts literals, u.<stat> / my.<stat>, u.max_<stat>,
+    + - * /, parentheses and unary minus. Raises ValueError on anything else."""
     if text in _EXPR_CACHE:
         return _EXPR_CACHE[text]
     try:
         tree = ast.parse(text, mode="eval")
     except SyntaxError as ex:
         raise ValueError(f"bad expression {text!r}: {ex}")
-    stats = set()
+    stats, maxes = set(), set()
     def check(node):
         if isinstance(node, ast.Expression):
             check(node.body)
@@ -32,17 +36,28 @@ def _compile_expr(text):
         elif isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
             pass
         elif (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
-              and node.value.id == "u" and node.attr in STATS):
+              and node.value.id in _SUBJECT and node.attr in STATS):
             stats.add(node.attr)
+        elif (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+              and node.value.id in _SUBJECT and node.attr in MAX_STATS):
+            maxes.add(node.attr[4:])
+        elif (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+              and node.value.id in _SUBJECT and node.attr[4:] in STATS
+              and node.attr[:4] == "max_"):
+            # named a ceiling for a stat that has none (decision 36) -- say which do
+            raise ValueError(f"{node.attr[4:]} has no ceiling -- only "
+                             f"{', '.join(CAPPED)} can be filled up")
         else:
             raise ValueError(f"bad expression {text!r}")
     check(tree)
 
     class _Rewrite(ast.NodeTransformer):
         def visit_Attribute(self, node):
-            if (isinstance(node.value, ast.Name) and node.value.id == "u"
-                    and node.attr in STATS):
-                return ast.copy_location(ast.Name(id="_u_" + node.attr, ctx=ast.Load()), node)
+            if isinstance(node.value, ast.Name) and node.value.id in _SUBJECT:
+                if node.attr in STATS:
+                    return ast.copy_location(ast.Name(id="_u_" + node.attr, ctx=ast.Load()), node)
+                if node.attr in MAX_STATS:
+                    return ast.copy_location(ast.Name(id="_m_" + node.attr[4:], ctx=ast.Load()), node)
             return node
     tree = _Rewrite().visit(tree)
     ast.fix_missing_locations(tree)
@@ -50,6 +65,9 @@ def _compile_expr(text):
 
     def ev(e):
         env = {"_u_" + s: e.stat[s] for s in stats}
+        # `max_<stat>` reads the ceiling. An entity built without one (a bare stub in a
+        # test) falls back to what it carries now, so a threshold is never a crash.
+        env.update(("_m_" + s, getattr(e, "max", e.stat).get(s, e.stat[s])) for s in maxes)
         try:
             return float(eval(code, {"__builtins__": {}}, env))
         except (ZeroDivisionError, OverflowError):

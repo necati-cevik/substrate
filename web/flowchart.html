@@ -3,33 +3,27 @@
 <title>substrate · flowchart editor</title>
 <link rel="stylesheet" href="flowchart.css">
 <style>
-  body { margin: 0; padding: 24px; background: #090c10; color: #c9d3e0;
-         font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  h1 { font-size: 16px; margin: 0 0 4px; }
-  p { color: #6b7a8d; margin: 0 0 16px; max-width: 70ch; }
-  #editor { max-width: 1100px; }
-  #out { background: #0b1017; border: 1px solid #222c38; border-radius: 8px;
-         padding: 12px; margin-top: 16px; overflow: auto; color: #8fa3bb;
-         font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  html, body { height: 100%; }
+  body { margin: 0; padding: 14px; background: #090c10; color: #c9d3e0;
+         font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+         display: flex; flex-direction: column; gap: 8px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex: none; }
+  h1 { font-size: 15px; margin: 0; font-weight: normal; }
+  header p { color: #6b7a8d; margin: 0; }
+  header a { color: #67e8f9; text-decoration: none; margin-left: auto; }
+  header a:hover { text-decoration: underline; }
+  #editor { flex: 1; min-height: 0; }
 </style>
 
-<h1>substrate · flowchart editor</h1>
-<p>Author a character's behaviour as a flowchart: <b>start</b> → decisions (◆) with
-  <b>yes/no</b> branches → actions (□) → <b>end</b>. Each tick runs from start until it
-  reaches an end. Edit the diamonds and boxes inline; the target dropdowns rewire the edges.
-  The graph JSON below is what the sim consumes. Save a behaviour under a name to write it
-  to <code>behaviours/&lt;name&gt;.json</code> on the server, then <b>load</b> it back or
-  <b>insert</b> it into another flowchart in place of a selected node. A numeric threshold may
-  be an expression over your stats, e.g. <code>u.sense/2</code>.</p>
+<header>
+  <h1>substrate &middot; flowchart editor</h1>
+  <a href="/">&larr; the arena</a>
+</header>
 
 <div id="editor"></div>
-<pre id="out"></pre>
 
+<script src="syntax.js"></script>
 <script src="flowchart.js"></script>
 <script>
-  const editor = new Flowchart(document.getElementById('editor'), {
-    graph: Flowchart.sample(),
-    onChange: g => { document.getElementById('out').textContent = JSON.stringify(g, null, 2); },
-  });
-  document.getElementById('out').textContent = JSON.stringify(editor.getGraph(), null, 2);
+  window.editor = new Flowchart(document.getElementById('editor'));
 </script>

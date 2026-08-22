@@ -1,13 +1,16 @@
   :root{
     --bg:#0d1117; --panel:#131a23; --line:#222c38; --ink:#c9d3e0; --dim:#6b7a8d;
-    --hp:#4ade80; --speed:#fbbf24; --sense:#a78bfa; --rules:#f472b6; --give:#60a5fa;
+    --hp:#4ade80; --speed:#fbbf24; --sense:#a78bfa; --give:#60a5fa;
     --bad:#ef4444; --pos:#60a5fa; --neg:#ef4444; --focus:#67e8f9;
   }
   *{box-sizing:border-box}
+  /* the map owns the window: a column of bar / map / log drawer, no permanent side column.
+     What used to be the right panel is now two things shaped like their content -- an
+     inspector card floating over the map only while something is selected, and a full-width
+     log drawer, since a log line is wide and was being cut off at 470px. */
   body{margin:0;background:var(--bg);color:var(--ink);
        font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-       display:grid;grid-template-columns:minmax(0,1fr) 470px;height:100vh}
-  #left{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+       display:flex;flex-direction:column;height:100vh;overflow:hidden}
   #bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
        padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
   button{background:#1c2733;color:var(--ink);border:1px solid var(--line);border-radius:4px;
@@ -17,17 +20,60 @@
   input{width:52px;background:#0b1017;color:var(--ink);border:1px solid var(--line);
         border-radius:4px;padding:3px 5px;font:inherit}
   label{color:var(--dim);display:flex;gap:4px;align-items:center;cursor:pointer}
+  button:disabled{opacity:.4;cursor:default;background:#1c2733;border-color:var(--line)}
+  /* the timeline: as wide as the bar can spare, so a long run stays scrubbable */
+  #scrub{flex:1;min-width:90px;max-width:340px;width:auto;padding:0;accent-color:#1f6feb;
+         background:none;border:none;cursor:pointer}
+  #scrub:disabled{opacity:.35;cursor:default}
   #stat{margin-left:auto;color:var(--dim)}
+  #stat .behind{color:var(--focus)}
   #stat b{color:var(--ink);font-weight:600}
-  #wrap{flex:1;overflow:auto;display:grid;place-items:center;padding:10px}
-  canvas{cursor:crosshair}
-  #side{display:flex;flex-direction:column;min-height:0;background:var(--panel)}
-  .sec{border-bottom:1px solid var(--line);padding:9px 11px}
-  .sec h2{margin:0 0 7px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-          color:var(--dim);font-weight:600}
-  #log{flex:1;overflow:auto;padding:6px 0}
-  .row{padding:1px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  #editlink{color:var(--focus);text-decoration:none}
+  #editlink:hover{text-decoration:underline}
+  #wrap{flex:1;min-width:0;min-height:0;overflow:hidden;padding:10px;position:relative}
+  canvas{cursor:crosshair;display:block;width:100%;height:100%}
+  /* the inspector: a card over the map, gone entirely when nothing is selected */
+  #insp{position:absolute;top:14px;right:14px;max-height:calc(100% - 28px);
+        width:min(420px, calc(100% - 28px));
+        display:flex;flex-direction:column;background:rgba(19,26,35,.95);
+        border:1px solid #2b3a4b;border-radius:6px;padding:9px 11px;
+        box-shadow:0 10px 30px rgba(0,0,0,.5);backdrop-filter:blur(7px)}
+  #insp[hidden]{display:none}
+  #inspx{position:absolute;top:3px;right:5px;z-index:2;border:none;background:none;
+         font-size:15px;line-height:16px;padding:0 4px}
+  #sel{flex:1;min-height:0;overflow:auto;padding-right:2px}
+  h2{margin:0 0 7px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--dim);font-weight:600}
+
+  /* the log drawer: header always there, body collapsible and drag-resizable */
+  #drawer{flex:none;display:flex;flex-direction:column;min-height:0;
+          height:var(--logh,210px);background:var(--panel);border-top:1px solid var(--line)}
+  #drawer.shut{height:auto}
+  #drawer.shut #log,#drawer.shut #dgrip{display:none}
+  #drawer.shut .caret{display:inline-block;transform:rotate(-90deg)}
+  #dgrip{height:5px;flex:none;cursor:ns-resize;margin-top:-3px}
+  #dgrip:hover,#dgrip.on{background:#1f6feb}
+  #dhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap;flex:none;
+         padding:4px 11px 5px;cursor:pointer;user-select:none}
+  #dhead:hover #dtoggle{color:var(--ink)}
+  #dtoggle{color:var(--dim);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+           font-weight:600}
+  /* the chip names what the log is filtered to; clicking it clears back to the whole run */
+  #filter{color:var(--focus);cursor:pointer}
+  #filter:hover{color:var(--ink)}
+  #log{flex:1;overflow:auto;padding:4px 0;border-top:1px solid var(--line)}
+  /* a full line, never an ellipsis: the drawer scrolls sideways if the line is longer */
+  .row{padding:1px 11px;white-space:nowrap;cursor:pointer;width:max-content;min-width:100%}
   .row:hover{background:#1a222c}
+  /* turns the run has already played but the world has been walked back out of: still the
+     record, just not where you are standing (decision 37) */
+  .row.ahead{opacity:.42}
+  .row.ahead:hover{opacity:.75}
+  .row.now{box-shadow:inset 2px 0 0 var(--focus)}
+  /* the row the log is standing on -- clicked, or walked onto with the arrow keys */
+  .row.on,.row.on:hover{background:#1e2937}
+  #log:focus{outline:none}
+  #log:focus .row.on{background:#24344a}
   .t{color:#455060}
   .id{color:#8fa3bb}
   .rule-tag{color:var(--focus);font-weight:600}
@@ -35,7 +81,6 @@
   .move{color:#5c6b7d} .wasted{color:#c9a24a} .idle{color:#4a5563} .blocked{color:#c08a68}
   .hold{color:#4a5563}
   .hazard{color:#e08d5a} .death{color:#ff6b6b;font-weight:600}
-  .slot_lost{color:var(--rules)}
   table{border-collapse:collapse;width:100%}
   td{padding:1px 0}
   td.k{color:var(--dim);width:88px}
@@ -62,21 +107,58 @@
   button.mini:hover{color:var(--ink)}
   #rules .says{color:var(--dim);padding-left:16px;flex:1;min-width:0;
         white-space:normal;overflow-wrap:break-word;line-height:1.5;font-size:14px}
-  #sel{max-height:64vh;overflow:auto}
+  /* The chart as the if / else-if ladder it behaves like (index.js's chartHTML): the lead
+     word says which branch of the walk this is, and a branch that tests again nests behind
+     a rail -- no node ids, since a reader never needs one. Two columns while both fit, so
+     one glance answers both questions: when on the left, what the tick is spent on flush
+     right. When they don't fit -- a nested rung inside a 420px card -- the row wraps rather
+     than squeezing: `→ act` moves whole onto the next line, still flush right, and the test
+     keeps the full width to wrap at spaces. Never the other way round, which crushed the
+     test into a one-word column and broke words mid-way.
+     Lead words start at the rail, not right-aligned against the tests: the column is only
+     as wide as `else if` needs, and right-aligning it pushed the opening `if` -- the first
+     line of every chart -- in by the width of a word that isn't there. */
+  .chart{line-height:1.7}
+  .chart .ln{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:5px}
+  .chart .lead{flex:none;min-width:52px;color:#5c6b7d}
+  .chart .test{flex:1 1 auto;min-width:0;color:#a5b4c6}
+  .chart .then{flex:none;margin-left:auto;max-width:100%;display:inline-flex;
+        align-items:baseline;column-gap:5px;text-align:right}
+  .chart .arw{flex:none;color:#566475}
+  .chart .does{font-weight:600}
+  .chart .does.none{color:#4a5563;font-weight:400}
+  .chart .does.ref{color:var(--focus);font-weight:400}
+  /* a call into another saved chart: one folded unit, opened on click to draw the chart it
+     runs underneath it (index.js's BEHOPEN) */
+  .chart .does.beh{color:#a78bfa}
+  .chart .does.beh.fold{cursor:pointer}
+  .chart .does.beh.fold:hover{color:#c4b5fd}
+  .chart .caret{display:inline-block;width:9px;font-size:10px;color:#7c6aa8}
+  .chart .blk.beh-in{border-left-color:#4a3d7a;opacity:.85}
+  .chart .lbl{color:var(--focus);border:1px solid #2b3a4b;border-radius:3px;
+        font-size:10px;padding:0 3px;margin-right:4px}
+  .chart .dead{color:#3d4855;cursor:help}
+  .chart .blk{margin-left:10px;padding-left:7px;border-left:1px solid #2b3a4b}
   #addrule{margin-top:4px}
   #err{color:var(--bad);margin-left:6px}
   .authored{color:var(--give);font-weight:600}
-  .legend{display:flex;gap:9px;flex-wrap:wrap;color:var(--dim)}
+  .legend{display:flex;gap:9px;flex-wrap:wrap;color:var(--dim);margin-left:auto}
   .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px}
+  /* the map's reading rule sits apart from the list of kinds: it is not one of them */
+  .legend .dir{color:#7d8ea3;border-left:1px solid #263446;padding-left:9px;cursor:help}
   /* one code everywhere -- map, rule text, log: hue says which stat, +/- says which way */
   .s-hp{color:var(--hp)} .s-speed{color:var(--speed)} .s-sense{color:var(--sense)}
-  .s-rules{color:var(--rules)} .s-position{color:#8fa3bb}
+  .s-position{color:#8fa3bb}
+  /* a coordinate is one token, not two numbers loose in a sentence: a chip, so the eye
+     lands on it as a place. The ⬡ and the comma are structure and stay dim; only the
+     numbers carry value. In the log the chip is also a way onto the map -- click it and the
+     cursor lands on that hex -- which is what the hover state is marking. */
+  .hex{display:inline-block;color:#9fb4cc;background:#18222e;border:1px solid #263446;
+       border-radius:3px;padding:0 3px;white-space:pre}
+  .hex .ax{color:#57657a}
+  .hex .ax:first-child{margin-right:2px;font-size:11px}
+  #log .hex{cursor:pointer}
+  #log .hex:hover{color:var(--focus);border-color:#3d5570;background:#1b2a38}
   .plus{color:var(--pos)} .minus{color:var(--neg)}
   .kw{color:#7f8ea3} .op{color:#9aa8bb} .num{color:var(--ink)} .mv{color:#8fa3bb}
   .num.expr{color:var(--focus);font-style:italic}
-  #key{display:flex;flex-direction:column;gap:2px;padding:7px 10px;line-height:1.6;
-       border-top:1px solid var(--line);background:var(--panel);color:var(--dim)}
-  #key .r{display:flex;gap:11px;flex-wrap:wrap;align-items:baseline}
-  #key .r>span{white-space:nowrap}
-  #key b{color:#5c6b7d;font-weight:600;width:72px;flex:none;white-space:nowrap;
-         font-size:10px;letter-spacing:.11em;text-transform:uppercase}

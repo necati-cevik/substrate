@@ -1,0 +1,23 @@
+{
+  "entry": "n3",
+  "nodes": {
+    "n3": {
+      "type": "decision",
+      "conds": [
+        "my hp > my.max_hp / 2"
+      ],
+      "yes": "n5",
+      "no": "n4"
+    },
+    "n4": {
+      "type": "behaviour",
+      "name": "eat",
+      "next": ""
+    },
+    "n5": {
+      "type": "behaviour",
+      "name": "attack",
+      "next": ""
+    }
+  }
+}

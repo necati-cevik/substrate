@@ -3,30 +3,38 @@
 <title>substrate</title>
 <link rel="stylesheet" href="index.css">
 
-<div id="left">
-  <div id="bar">
-    <button id="b1">tick</button>
-    <button id="b10">×10</button>
-    <button id="b100">×100</button>
-    <button id="bplay">play</button>
-    <span style="width:8px"></span>
-    seed <input id="seed" value="7"><button id="breset">reset</button>
-    <label><input type="checkbox" id="trails" style="width:auto"> all trails</label>
-    <label><input type="checkbox" id="acts" checked style="width:auto"> acts</label>
-    <button id="bfit" title="reset zoom & pan">fit</button>
-    <span id="stat"></span>
-  </div>
-  <div id="wrap"><canvas id="cv"></canvas></div>
-  <div id="key"></div>
+<div id="bar">
+  <!-- replay (decision 37): back walks the world into a turn it has already played, whole;
+       tick / play carry it forward through the record and then on past it -->
+  <button id="bback" title="replay the turn before (,)">◀</button>
+  <button id="b1" title="the next turn (space or .)">tick</button>
+  <button id="b10">×10</button>
+  <button id="b100">×100</button>
+  <button id="bplay">play</button>
+  <input type="range" id="scrub" min="0" max="0" value="0" title="scrub through the run">
+  <span style="width:8px"></span>
+  seed <input id="seed" value="7"><button id="breset">reset</button>
+  <label><input type="checkbox" id="trails" style="width:auto"> all trails</label>
+  <label><input type="checkbox" id="acts" checked style="width:auto"> acts</label>
+  <button id="bfit" title="reset zoom & pan">fit</button>
+  <span id="stat"></span>
+  <a href="/flowchart" id="editlink" title="author a behaviour chart">flowchart editor &rarr;</a>
 </div>
 
-<div id="side">
-  <div class="sec">
-    <h2>selected</h2>
-    <div id="sel"><span class="empty">click an entity or a cell</span></div>
-  </div>
-  <div class="sec" style="padding-bottom:7px">
-    <h2>event log <span id="filter" style="color:var(--hp)"></span></h2>
+<!-- the map owns the window; the inspector only exists while something is selected -->
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <aside id="insp" hidden>
+    <button id="inspx" class="mini" title="close (esc)">&times;</button>
+    <div id="sel"></div>
+  </aside>
+</div>
+
+<!-- the log is wide, not tall: full width so a line never has to be cut off -->
+<div id="drawer">
+  <div id="dgrip" title="drag to resize"></div>
+  <div id="dhead">
+    <span id="dtoggle"><span class="caret">&#9662;</span> event log <span id="filter"></span></span>
     <div class="legend">
       <span class="gather">&#8595; gather</span>
       <span class="harm">&#10005; harm</span>
@@ -36,9 +44,13 @@
       <span class="blocked">&#8856; blocked</span>
       <span class="idle">&middot; idle</span>
       <span class="death">&dagger; death</span>
+      <!-- the map's one rule for reading an act: the arrow runs from the actor into
+           whatever it acted on -->
+      <span class="dir" title="on the map every act is an arrow: the dot end is the entity that acted, the head is the cell or body it acted on">&bull;&mdash;&#9656; actor &rarr; acted on</span>
     </div>
   </div>
-  <div id="log"></div>
+  <div id="log" tabindex="0" title="click a row to walk the world into that turn; ↑↓ step through the log"></div>
 </div>
 
+<script src="syntax.js"></script>
 <script src="index.js"></script>

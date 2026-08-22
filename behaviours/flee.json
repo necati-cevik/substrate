@@ -1,0 +1,18 @@
+{
+  "entry": "n2",
+  "nodes": {
+    "n2": {
+      "type": "decision",
+      "conds": [
+        "dist entity <= my.sense / 2"
+      ],
+      "yes": "n3",
+      "no": ""
+    },
+    "n3": {
+      "type": "action",
+      "act": "move away from entity",
+      "next": ""
+    }
+  }
+}

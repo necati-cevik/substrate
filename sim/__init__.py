@@ -4,24 +4,28 @@ In:  hex arena, clustered resource deltas, entities running 3-4 if/do rules,
      reach attenuation, absorption, upkeep decay, skill, corpse loot, death.
 Out: genes, karma, rebirth, reproduction, environment actions. Deferred on purpose.
 
-The package is split by concern (config, hexgrid, world, grammar, rules, sense,
-resolve, display); this module re-exports the public surface and provides the CLI
+The package is split by concern (config, hexgrid, world, grammar, rules, syntax,
+sense, resolve, display); this module re-exports the public surface and provides the CLI
 entry point.
 """
 import random
 from collections import defaultdict, Counter
 
-from .config import (MAP_RADIUS, N_ENTITIES, TICKS, STATS,
-                     K_ABSORB, FALLOFF, UPKEEP_FLAT, UPKEEP_RATE,
-                     STRAIN_K, STRAIN_DRAIN, LOOT_PCT, SKILL_GAIN,
-                     SKILL_DECAY, REGROW, READ_FRAC)
+from .config import (MAP_RADIUS, N_ENTITIES, TICKS, STATS, CAPPED, START, START_SPREAD,
+                     K_ABSORB, ACTS_PER_TICK, UPKEEP_FLAT, UPKEEP_RATE,
+                     STRAIN_K, HUNGER_GRACE, HUNGER_EXP, HUNGER_DRAIN,
+                     LOOT_PCT, SKILL_GAIN, SKILL_DECAY, REGROW, READ_FRAC,
+                     HP_AMOUNT, BOON_AMOUNT, UNIT, POWER)
 from .hexgrid import DIRS, hdist, hadd, disc, step_towards
-from .world import Cell, Entity, archetype, make_world, GRAZE, ARCHETYPES
+from .world import (Cell, Entity, archetype, cell_amount, roll_start, make_world, GRAZE,
+                    ARCHETYPES, BEHAVIOUR_DIR, saved_behaviours, raw_behaviours)
 from .grammar import OPS, COND_SPEC, ACT_SPEC, SEL_SPEC, rand_rules
 from .rules import parse_ruleset
+from .syntax import (TextError, check, parse_cond, parse_conds, parse_act,
+                     cond_text, conds_text, act_text, sel_text)
 from .flowchart import step_chart, parse_chart, chart
 from .sense import read_radius
-from .resolve import run_tick
+from .resolve import run_tick, bite, REACH
 from .display import render, fmt_sel, fmt_cond, fmt_conds, fmt_act
 
 

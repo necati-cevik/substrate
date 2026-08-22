@@ -2,99 +2,266 @@
    Self-contained: no dependency on the map, the log, or any server endpoint. */
 
 :root {
-  --fc-bg: #0d1117; --fc-panel: #131a23; --fc-line: #222c38;
+  --fc-bg: #0d1117; --fc-panel: #131a23; --fc-line: #222c38; --fc-line2: #2c3a4a;
   --fc-ink: #c9d3e0; --fc-dim: #6b7a8d; --fc-faint: #455060;
-  --hp: #4ade80; --speed: #fbbf24; --sense: #a78bfa; --rules: #f472b6;
-  --give: #60a5fa; --bad: #ef4444; --focus: #67e8f9;
+  --hp: #4ade80; --bad: #ef4444; --focus: #67e8f9;
+  --yes: #4ade80; --no: #f0834e; --err: #ef4444; --warn: #fbbf24; --info: #60a5fa;
+  --beh: #a78bfa;      /* a chart calling another chart -- its own kind of node */
 }
 
 .fc {
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--fc-ink); background: var(--fc-bg);
-  border: 1px solid var(--fc-line); border-radius: 8px; padding: 10px;
+  border: 1px solid var(--fc-line); border-radius: 8px;
+  display: flex; flex-direction: column; overflow: hidden;
 }
 .fc * { box-sizing: border-box; }
+.fc :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 
+/* ------------------------------------------------------------------ chrome */
 .fc-toolbar {
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-  padding-bottom: 8px; border-bottom: 1px solid var(--fc-line); margin-bottom: 8px;
+  padding: 7px 9px; border-bottom: 1px solid var(--fc-line); flex: none;
 }
-.fc-toolbar .fc-hint { color: var(--fc-dim); margin-left: auto; }
+.fc-sep { width: 1px; align-self: stretch; background: var(--fc-line); margin: 0 3px; }
+.fc-spacer { margin-left: auto; }
+.fc-hint { color: var(--fc-dim); }
 
 .fc button {
   background: #1c2733; color: var(--fc-ink); border: 1px solid var(--fc-line);
   border-radius: 4px; padding: 3px 8px; font: inherit; cursor: pointer;
 }
-.fc button:hover { background: #26333f; border-color: #38495c; }
+.fc button:hover:not(:disabled) { background: #26333f; border-color: #38495c; }
+.fc button:disabled { opacity: .38; cursor: default; }
 .fc button.fc-danger { color: var(--bad); border-color: #5b2a2a; }
-.fc button.fc-danger:hover { background: #3a1d1d; border-color: var(--bad); }
+.fc button.fc-danger:hover:not(:disabled) { background: #3a1d1d; border-color: var(--bad); }
+.fc button.fc-on { background: #24404d; border-color: #3d6b7d; color: #cdeaf3; }
+.fc button.fc-icon { padding: 3px 6px; }
 
-.fc-library {
-  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-  padding: 6px 0; border-bottom: 1px solid var(--fc-line); margin-bottom: 8px;
+.fc-main { display: flex; flex: 1; min-height: 0; }
+
+/* ------------------------------------------------------------------ canvas */
+.fc-canvas {
+  position: relative; flex: 1; min-width: 0; overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, #1b2531 1px, transparent 0) 0 0 / 24px 24px;
+  cursor: default; touch-action: none;
 }
-.fc-library input.fc-lib-name { width: 130px; }
-.fc-library select.fc-lib-select { min-width: 120px; max-width: 200px; }
-.fc-library .fc-hint { color: var(--fc-dim); margin-left: auto; }
-
-.fc-node.fc-selected { outline: 2px solid var(--focus); outline-offset: 2px; }
-
-.fc-canvas { position: relative; overflow: auto; min-height: 200px; }
+.fc-canvas.fc-panning { cursor: grabbing; }
+.fc-canvas.fc-pannable { cursor: grab; }
+.fc-canvas.fc-linking { cursor: crosshair; }
+.fc-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .fc-nodes { position: absolute; left: 0; top: 0; }
-.fc-edges { position: absolute; left: 0; top: 0; pointer-events: none; }
-.fc-edge  { fill: none; stroke: #4a5563; stroke-width: 1.5; }
-.fc-elabel { fill: #8fa3bb; font-size: 10px; }
+.fc-edges { position: absolute; left: 0; top: 0; overflow: visible; }
 
+.fc-edge { fill: none; stroke: #4a5563; stroke-width: 1.6; }
+.fc-edge.e-yes { stroke: #3f7a55; }
+.fc-edge.e-no  { stroke: #8a5236; }
+.fc-edge.e-back { stroke-dasharray: 5 4; }
+.fc-edge.e-dead { stroke: #4a3040; stroke-dasharray: 2 4; }
+.fc-edge.e-sel { stroke: var(--focus); stroke-width: 2.6; }
+.fc-edge.e-lit { stroke-width: 2.6; }
+.fc-edge.e-dim { opacity: .18; }
+.fc-hit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; pointer-events: stroke; }
+.fc-elabel {
+  fill: #93a5bb; font: 10px ui-monospace, monospace; pointer-events: none;
+  stroke: var(--fc-bg); stroke-width: 3px; paint-order: stroke;
+}
+.fc-elabel.l-yes { fill: var(--yes); } .fc-elabel.l-no { fill: var(--no); }
+.fc-link { fill: none; stroke: var(--focus); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+
+.fc-marquee {
+  position: absolute; border: 1px solid var(--focus); background: rgba(103, 232, 249, .09);
+  pointer-events: none; border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------ nodes */
 .fc-node {
-  position: absolute; background: var(--fc-panel); border: 1px solid #2c3a4a;
-  border-radius: 6px; min-width: 230px;
+  position: absolute; background: var(--fc-panel); border: 1px solid var(--fc-line2);
+  border-radius: 6px; width: 340px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
 }
 .fc-node.fc-decision { border-top: 3px solid var(--focus); }
 .fc-node.fc-action   { border-top: 3px solid var(--hp); }
-.fc-node.fc-start    { border: 1px dashed #4a5563; border-radius: 999px; }
-.fc-node.fc-end      { border: 1px solid #2c3a4a; border-radius: 999px; }
+.fc-node.fc-behaviour { border-top: 3px solid var(--beh); }
+/* the node the walk begins at is an ordinary node, marked rather than shaped */
+.fc-node.fc-at-entry { box-shadow: 0 0 0 1px var(--fc-faint), 0 1px 3px rgba(0, 0, 0, .4); }
+.fc-node.fc-selected { border-color: var(--focus); box-shadow: 0 0 0 2px rgba(103,232,249,.35), 0 2px 8px rgba(0,0,0,.5); }
+.fc-node.fc-unreached { opacity: .58; }
+.fc-node.fc-flash { animation: fc-flash .9s ease-out; }
+@keyframes fc-flash { from { box-shadow: 0 0 0 6px rgba(103,232,249,.55); } }
+.fc-node.fc-dim { opacity: .22; }
 
 .fc-head {
   display: flex; gap: 6px; align-items: center; padding: 4px 7px;
   border-bottom: 1px solid var(--fc-line);
   font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--fc-dim);
-  cursor: grab;
+  cursor: grab; user-select: none;
 }
 .fc-dragging, .fc-dragging .fc-head { cursor: grabbing; }
-.fc-node.fc-start .fc-head, .fc-node.fc-end .fc-head { border-bottom: 0; }
-.fc-glyph { color: var(--fc-ink); }
-.fc-id { margin-left: auto; color: var(--fc-faint); letter-spacing: 0; text-transform: none; }
-.fc-del, .fc-mini { padding: 0 5px; line-height: 16px; color: var(--fc-dim); }
-.fc-del:hover { color: var(--bad); }
+.fc-glyph { color: var(--fc-ink); flex: none; }
+.fc-node.fc-decision .fc-glyph { color: var(--focus); }
+.fc-node.fc-action   .fc-glyph { color: var(--hp); }
+.fc-node.fc-behaviour .fc-glyph { color: var(--beh); }
+.fc-label {
+  flex: 1; min-width: 40px; width: auto !important; background: transparent !important;
+  border: 0 !important; color: var(--fc-ink); font-size: 11px; letter-spacing: 0;
+  text-transform: none; padding: 0 !important; cursor: text;
+}
+.fc-label::placeholder { color: var(--fc-dim); letter-spacing: .06em; text-transform: uppercase; }
+.fc-label:hover { background: #0b1017 !important; }
+.fc-id { color: var(--fc-faint); letter-spacing: 0; text-transform: none; flex: none; }
+.fc-badge {
+  flex: none; text-transform: none; color: var(--fc-dim); background: #0b1017; border: 1px solid var(--fc-line);
+  border-radius: 3px; padding: 0 4px; font-size: 9px; letter-spacing: 0;
+}
+.fc-badge.over { color: var(--warn); border-color: #4a3d1c; }
+.fc-mark { flex: none; letter-spacing: 0; text-transform: none; cursor: help; font-size: 11px; }
+.fc-mark.m-error { color: var(--err); } .fc-mark.m-warn { color: var(--warn); }
+.fc-mark.m-info  { color: var(--info); }
+.fc-del, .fc-mini {
+  padding: 0 5px; line-height: 16px; color: var(--fc-dim); flex: none;
+  background: transparent; border: 0;
+}
+.fc-del:hover { color: var(--bad); background: transparent !important; }
+.fc-entry {
+  padding: 0 4px; line-height: 16px; flex: none; color: var(--fc-faint);
+  background: transparent; border: 0; cursor: pointer;
+}
+.fc-entry:hover { color: var(--fc-ink); background: transparent !important; }
+.fc-entry.on { color: var(--focus); cursor: default; }
+.fc-mini:hover { color: var(--fc-ink); }
 
 .fc-body { padding: 5px 7px; }
-.fc-cond, .fc-act { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin: 2px 0; }
-.fc-and { color: var(--fc-faint); width: 24px; font-size: 10px; flex: none; }
-
-.fc-node-editor { display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.fc-cond, .fc-act, .fc-beh { display: flex; gap: 4px; align-items: flex-start; margin: 3px 0; }
+/* a call names one thing -- the chart that runs here -- so the name gets the room */
+.fc-beh select { flex: 1 1 auto; min-width: 0; cursor: pointer; color: var(--beh); }
+.fc-beh .fc-mini { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.fc-behbad { color: var(--err); }
+.fc-called { flex: none; color: var(--beh); cursor: help; }
+.fc-and { color: var(--fc-faint); width: 20px; flex: none; font-size: 10px; padding-top: 3px; }
 
 .fc select, .fc input {
   background: #0b1017; color: var(--fc-ink); border: 1px solid var(--fc-line);
-  border-radius: 3px; font: inherit; padding: 1px 3px; cursor: pointer;
+  border-radius: 3px; font: inherit; padding: 1px 2px; cursor: pointer;
 }
 .fc select:hover, .fc input:hover { border-color: #38495c; }
-.fc input { width: 96px; cursor: text; }
-.fc select.fc-kind { color: #8fa3bb; }
-.fc-edge-sel { max-width: 96px; }
+.fc input { width: 56px; cursor: text; }
+.fc input.fc-bad { border-color: var(--err); color: #ffb4b4; }
 
-.fc-says { color: #8fa3bb; margin-top: 5px; line-height: 1.5; }
+/* what the author types: a condition per line, or one action. The box fills the node and
+   grows with its content, because the text is the node -- everything else here is chrome */
+.fc textarea.fc-text, .fc input.fc-text {
+  flex: 1 1 auto; min-width: 0; width: auto; resize: none; overflow: hidden;
+  background: #0b1017; color: var(--fc-ink); border: 1px solid var(--fc-line);
+  border-radius: 3px; font: inherit; line-height: 1.5; padding: 1px 4px; cursor: text;
+  white-space: pre; overflow-x: auto;
+}
+.fc .fc-text:focus { border-color: var(--focus); }
+.fc .fc-text::placeholder { color: var(--fc-faint); }
+.fc .fc-text.fc-bad { border-color: var(--err); color: #ffb4b4; }
+
+/* the checker's verdict, under the box: the line at fault, a caret, and the way out */
+.fc-err { margin-top: 5px; }
+.fc-caret {
+  margin: 0; font: inherit; color: var(--fc-dim); white-space: pre; overflow-x: auto;
+}
+.fc-caret::first-line { color: #8fa3bb; }
+.fc-errmsg { color: var(--err); }
+.fc-fixes { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.fc-fix {
+  background: #131a23; color: #8fa3bb; border: 1px solid var(--fc-line);
+  border-radius: 3px; font: inherit; padding: 0 4px; cursor: pointer;
+}
+.fc-fix:hover { color: var(--fc-ink); border-color: var(--focus); }
 
 .fc-foot {
   display: flex; gap: 10px; align-items: center; padding: 4px 7px;
   border-top: 1px solid var(--fc-line); flex-wrap: wrap;
 }
 .fc-foot label { color: var(--fc-dim); font-size: 10px; display: inline-flex; gap: 4px; align-items: center; }
+.fc-edge-sel { max-width: 92px; }
 
-/* one code everywhere: hue names the stat, + / − names the direction */
-.s-hp { color: var(--hp); } .s-speed { color: var(--speed); }
-.s-sense { color: var(--sense); } .s-rules { color: var(--rules); }
-.s-position { color: #8fa3bb; }
-.plus { color: var(--give); } .minus { color: var(--bad); }
-.kw { color: #7f8ea3; } .op { color: #9aa8bb; } .num { color: var(--fc-ink); }
-.num.expr { color: var(--focus); font-style: italic; }
+/* output ports: the drag handles that make edges */
+.fc-port {
+  position: absolute; width: 13px; height: 13px; bottom: -7px; margin-left: -6.5px;
+  border-radius: 50%; background: #0b1017; border: 2px solid #4a5563;
+  cursor: crosshair; z-index: 2;
+}
+.fc-port:hover, .fc-port.fc-port-hot { background: var(--focus); border-color: var(--focus); }
+.fc-port.p-yes { border-color: var(--yes); } .fc-port.p-no { border-color: var(--no); }
+.fc-port.p-open { box-shadow: 0 0 0 3px rgba(239, 68, 68, .22); }
+.fc-node.fc-droptarget { box-shadow: 0 0 0 3px rgba(103, 232, 249, .5); }
+
+/* ------------------------------------------------------------------ rail */
+.fc-rail {
+  width: 306px; flex: none; border-left: 1px solid var(--fc-line);
+  display: flex; flex-direction: column; min-height: 0; background: #0b1017;
+}
+.fc.fc-rail-off .fc-rail { display: none; }
+.fc-tabs { display: flex; gap: 4px; padding: 6px 7px; border-bottom: 1px solid var(--fc-line); flex: none; }
+.fc-tabs button { flex: 1; padding: 3px 2px; }
+.fc-tabpane { display: none; padding: 8px 9px; overflow: auto; flex: 1; min-height: 0; }
+.fc-tabpane.fc-shown { display: block; }
+.fc-rail h3 {
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--fc-dim);
+  margin: 0 0 6px; font-weight: normal;
+}
+.fc-rail h3:not(:first-child) { margin-top: 14px; }
+.fc-row { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
+.fc-row input { flex: 1; width: auto; }
+.fc-empty { color: var(--fc-faint); }
+
+.fc-prob { display: flex; gap: 6px; padding: 4px 5px; border-radius: 4px; cursor: pointer; align-items: flex-start; }
+.fc-prob:hover { background: #131a23; }
+.fc-prob .pl { flex: none; }
+.fc-prob.p-error .pl { color: var(--err); } .fc-prob.p-warn .pl { color: var(--warn); }
+.fc-prob.p-info .pl { color: var(--info); }
+.fc-prob .pn { flex: none; color: var(--fc-faint); }
+.fc-prob .pm { color: #9fb0c4; }
+.fc-ok { color: var(--hp); }
+
+.fc-libitem { display: flex; gap: 5px; align-items: center; padding: 2px 0; }
+.fc-libitem .ln {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+  padding: 2px 4px; border-radius: 3px;
+}
+.fc-libitem .ln:hover { background: #131a23; color: #fff; }
+.fc-libitem.fc-cur .ln { color: var(--focus); }
+
+.fc-json {
+  width: 100%; min-height: 300px; resize: vertical; background: #090c10;
+  color: #8fa3bb; border: 1px solid var(--fc-line); border-radius: 4px; padding: 6px;
+  font: 11px/1.5 ui-monospace, monospace; cursor: text;
+}
+/* the cheatsheet: a written form on the left, what it means on the right */
+.fc-syn { color: var(--fc-dim); margin-bottom: 8px; }
+.fc-syn div { display: flex; gap: 8px; padding: 1px 0; align-items: baseline; }
+.fc-syn code, .fc-hint code { color: #8fa3bb; font: inherit; }
+.fc-syn code { flex: none; min-width: 172px; }
+.fc-syn span { color: var(--fc-faint); }
+
+.fc-keys { color: var(--fc-dim); }
+.fc-keys div { display: flex; gap: 8px; padding: 1px 0; }
+.fc-keys kbd {
+  flex: none; min-width: 92px; color: var(--fc-ink); background: #131a23;
+  border: 1px solid var(--fc-line); border-radius: 3px; padding: 0 4px; font: inherit;
+}
+
+/* ------------------------------------------------------------------ status */
+.fc-status {
+  display: flex; gap: 8px; align-items: center; flex: none;
+  padding: 4px 9px; border-top: 1px solid var(--fc-line); color: var(--fc-dim); min-height: 25px;
+}
+.fc-status .s-msg.s-err { color: var(--err); } .fc-status .s-msg.s-ok { color: var(--hp); }
+.fc-status .s-counts { margin-left: auto; }
+.fc-status b { color: var(--fc-ink); font-weight: normal; }
+
+/* ------------------------------------------------------------------ popover */
+.fc-menu {
+  position: absolute; z-index: 10; background: var(--fc-panel);
+  border: 1px solid var(--fc-line2); border-radius: 6px; padding: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .6); display: flex; flex-direction: column; gap: 2px;
+}
+.fc-menu button { text-align: left; border-color: transparent; background: transparent; }
+.fc-menu .fc-menu-t { color: var(--fc-faint); padding: 2px 8px; }

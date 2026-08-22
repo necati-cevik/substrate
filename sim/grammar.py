@@ -1,5 +1,5 @@
 """Rule grammar: condition/action vocabulary, random generation, editor schemas."""
-from .config import STATS, PAYLOAD_STATS, START
+from .config import STATS, START
 
 # ---------------------------------------------------------------- rule grammar (decision 16)
 # condition: what the model already contains, nothing more
@@ -8,7 +8,7 @@ from .config import STATS, PAYLOAD_STATS, START
 # a rule holds a list of conditions, all of which must hold (AND).
 # action:
 #   ("move", selector, sign) | ("act", selector, stat, sign)
-# selector: ("entity",) | ("source", stat, sign) | ("it",)   -- decision 22
+# selector: ("entity",) | ("source", stat, sign) | ("it",) | ("random",)  -- decisions 22, 34
 
 OPS = {"<": lambda a, b: a < b, ">": lambda a, b: a > b,
        "<=": lambda a, b: a <= b, ">=": lambda a, b: a >= b}
@@ -19,20 +19,17 @@ def rand_op(rng):
     return rng.choice(list(OPS))
 
 def rand_selector(rng):
-    if rng.random() < 0.4:
+    k = rng.random()
+    if k < 0.10:
+        return ("random",)          # decision 34: a hex, not a thing -- mostly worth moving to
+    if k < 0.45:
         return ("entity",)
-    return ("source", rand_payload_stat(rng), 1 if rng.random() < 0.8 else -1)
+    return ("source", rand_stat(rng), 1 if rng.random() < 0.8 else -1)
 
 def rand_stat(rng):
-    """A stat to read or test -- rules included. Reading another's slot count is strategy;
-    only trading it is reserved (decision 25)."""
-    return rng.choices(STATS, weights=[5, 2, 2, 1])[0]
-
-def rand_payload_stat(rng):
-    """decision 25: a stat the wild offers or a random action may change. `rules` is
-    deliberately absent -- no resource carries brain-slots, and a random rule must not
-    strip a rival's slot count."""
-    return rng.choices(PAYLOAD_STATS, weights=[5, 2, 2])[0]
+    """A stat to read, test, offer or trade. Decision 27: every stat plays every role, so
+    one draw serves them all -- weighted toward hp, which is what the wild mostly carries."""
+    return rng.choices(STATS, weights=[5, 2, 2])[0]
 
 def rand_condition(rng):
     k = rng.random()
@@ -45,11 +42,11 @@ def rand_condition(rng):
     if k < 0.60:
         return ("dist_entity", rand_op(rng), rng.randint(1, 6))
     if k < 0.85:
-        return ("dist_source", rand_payload_stat(rng), 1 if rng.random() < 0.8 else -1,
+        return ("dist_source", rand_stat(rng), 1 if rng.random() < 0.8 else -1,
                 rand_op(rng), rng.randint(1, 6))
     if k < 0.93:
         return ("count_entity", rand_op(rng), rng.randint(1, 4))
-    return ("amount", rand_payload_stat(rng), 1 if rng.random() < 0.8 else -1,
+    return ("amount", rand_stat(rng), 1 if rng.random() < 0.8 else -1,
             rand_op(rng), rng.randint(2, 20))
 
 def rand_action(rng):
@@ -58,7 +55,7 @@ def rand_action(rng):
         return ("move", sel, 1 if rng.random() < 0.75 else -1)
     if sel[0] == "source":
         return ("act", sel)                                   # gathering: the source carries its own payload
-    return ("act", sel, rand_payload_stat(rng), 1 if rng.random() < 0.35 else -1)
+    return ("act", sel, rand_stat(rng), 1 if rng.random() < 0.35 else -1)
 
 def action_source(act):
     """The (stat, sign) a rule's action acts on, if its selector names a source."""
@@ -110,4 +107,5 @@ SEL_SPEC = {
     "entity": [],
     "source": ["stat", "sign"],
     "it":     [],                # decision 22: whatever the condition matched
+    "random": [],                # decision 34: a hex next to you, drawn fresh each tick
 }

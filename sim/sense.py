@@ -1,15 +1,22 @@
 """Perception and decision: what an entity sees and which rule fires."""
-from .config import READ_FRAC
-from .hexgrid import hdist
+import random as _random
+
+from .config import READ_FRAC, UNIT
+from .hexgrid import hdist, neighbours
 from .grammar import OPS
 from .rules import _num_value
 
 # ---------------------------------------------------------------- sense (decision 7 step 2)
 def view_of(e, ents, cells):
+    """What is there to be seen. A cell holding less than a whole unit is not in the view
+    at all: the wild yields in units (decision 11, amended), so a patch part-way through
+    growing one back is bare ground until it is ripe. Without that floor a spent cell would
+    still be a target -- and standing on one, nibbling the trickle it regrows each tick,
+    would count as eating."""
     r = max(1, int(e.stat["sense"]))
     seen_e = [o for o in ents if o is not e and o.alive and hdist(o.pos, e.pos) <= r]
     seen_c = {p: c for p, c in cells.items()
-              if c.amount > 0.01 and hdist(p, e.pos) <= r}
+              if c.amount >= UNIT and hdist(p, e.pos) <= r}
     return seen_e, seen_c
 
 def nearest_entity(e, seen_e):
@@ -41,11 +48,23 @@ def nearest_source(e, seen_c, stat, sign=None):
             best, bd = p, d
     return best
 
-def resolve_selector(e, sel, seen_e, seen_c, subject=None):
+def random_hex(e, rng):
+    """decision 34: `random` names a hex, not a thing -- one of the six next to you, drawn
+    fresh every tick. Only hexes on the map are drawn, so a step at the rim is a step, not a
+    turn spent walking into the wall."""
+    ns = neighbours(e.pos)
+    return rng.choice(ns) if ns else None
+
+def resolve_selector(e, sel, seen_e, seen_c, subject=None, rng=_random):
     """decision 22: a resolved target is (kind, pos) -- what it is, not just where. `it` takes
-    both from the condition's subject, so acting on it gathers or hits as the subject demands."""
+    both from the condition's subject, so acting on it gathers or hits as the subject demands.
+    `random` resolves to a bare hex (decision 34): moving is what it is for, and an act aimed
+    at one lands on whoever happens to be standing there, or on nothing."""
     if sel[0] == "it":
         return subject
+    if sel[0] == "random":
+        p = random_hex(e, rng)
+        return ("hex", p) if p is not None else None
     if sel[0] == "entity":
         o = nearest_entity(e, seen_e)
         return ("entity", o.pos) if o else None

@@ -8,6 +8,8 @@ def fmt_sel(sel):
         return "it"
     if sel[0] == "entity":
         return "nearest entity"
+    if sel[0] == "random":
+        return "a random hex"
     return f"nearest {'+' if sel[2] > 0 else '-'}{sel[1]} source"
 
 def fmt_cond(c):
@@ -26,6 +28,8 @@ def fmt_conds(cs):
 
 def fmt_act(a):
     if a[0] == "move":
+        if a[1][0] == "random" and a[2] > 0:
+            return "move randomly"
         return f"move {'toward' if a[2] > 0 else 'away from'} {fmt_sel(a[1])}"
     sel = a[1]
     if sel[0] == "source":
